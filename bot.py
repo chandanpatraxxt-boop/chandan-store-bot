@@ -5,7 +5,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Keyboar
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-TOKEN = "8950227047:AAGcs_cSrkHG52lIqWZN-OgXUUQ_n8nJlnQ"
+TOKEN = "8950227047:AAGKQ7D9Jx4cmWrYAWNPYA0IEHrAdErHOlA"
 
 RAZORPAY_KEY_ID = "rzp_test_TjU8CLPgkcpwhb"
 RAZORPAY_KEY_SECRET = "YOUR_TEST_KEY_SECRET"
