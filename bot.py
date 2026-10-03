@@ -6,8 +6,7 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Messa
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-TOKEN = "8950227047:AAGKQ7D9Jx4cmWrYAWNPYA0IEHrAdErH0lA"
-RAZORPAY_KEY_ID = "rzp_test_Tju8CLPgkcpwhb"
+TOKEN = "8950227047:AAE1c2sinlsbaML_0s60vXwGrTRijCUter4"
 RAZORPAY_KEY_SECRET = "mGgetXe4fJ3nbAE4p5fBXLvwBc"
 
 user_balances = {}
