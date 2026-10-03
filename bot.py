@@ -6,10 +6,10 @@ from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, Callb
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
-# Tomar notun Telegram Bot Token
-TOKEN = "8950227047:AAG1GFJNsSg8_vhodMpHXUkdc9APCOmnyOg"
+# তোমার নতুন টেলিগ্রাম বট টোকেন
+TOKEN = "8950227047:AAGclEDHAE2y3MZoI0kuViOvsVksQ_hoptg"
 
-# Razorpay API Keys
+# Razorpay API Keys (এখানে তোমার আসল বা টেস্ট কি বসাবে)
 RAZORPAY_KEY_ID = "rzp_test_TjU6CLPgkcpwhb"
 RAZORPAY_KEY_SECRET = "mGxoE4fJ3nbAE4p5fBXLvwBq"
 
@@ -87,7 +87,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     if data == "shop":
-        shop_text = "┏ 🛒 **PRODUCT STORE – SHOP** ❞\n┗ \n\n⚙️️ Select your device type:"
+        shop_text = "┏ 🛒 **PRODUCT STORE – SHOP** ❞\n┗ \n\n⚙️ Select your device type:"
         shop_keyboard = [
             [InlineKeyboardButton("🔑 ROOT", callback_data="cat_root")],
             [InlineKeyboardButton("🔑 NONROOT", callback_data="cat_nonroot")],
@@ -150,70 +150,73 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             f"🟩 **Final Total: ₹{price:.2f}** ❞"
         )
         summary_kb = [
-            [InlineKeyboardButton("✅ Confirm & Pay Online", callback_data="create_payment_link")],
+            [InlineKeyboardButton("✅ Confirm & Generate QR", callback_data="create_razorpay_qr")],
             [InlineKeyboardButton("⬅️ Back to Plans", callback_data="shop")]
         ]
         await query.answer()
         await query.edit_message_text(text=summary_text, reply_markup=InlineKeyboardMarkup(summary_kb), parse_mode="Markdown")
 
-    elif data == "create_payment_link":
+    elif data == "create_razorpay_qr":
         order = user_orders.get(user_id, {"price": 40.0, "product": "RAPID CORE FF ROOT ANDROID"})
         price = order.get("price", 40.0)
         prod_name = order.get("product", "RAPID CORE FF ROOT ANDROID")
 
-        url = "https://api.razorpay.com/v1/payment_links"
+        # Razorpay QR Code API Call
+        url = "https://api.razorpay.com/v1/qr_codes"
         auth = base64.b64encode(f"{RAZORPAY_KEY_ID}:{RAZORPAY_KEY_SECRET}".encode()).decode()
         headers = {
             "Authorization": f"Basic {auth}",
             "Content-Type": "application/json"
         }
         payload = {
-            "amount": int(price * 100),
-            "currency": "INR",
-            "description": f"Purchase {prod_name}",
-            "customer": {
-                "name": f"User {user_id}",
-                "contact": user_phones.get(user_id, "9999999999")
-            },
-            "notify": {"sms": False, "email": False},
-            "reminder_enable": False,
-            "callback_url": "https://t.me/"
+            "type": "upi_qr",
+            "name": f"Chandan Store",
+            "usage": "single_use",
+            "fixed_amount": True,
+            "payment_amount": int(price * 100),
+            "description": f"Purchase {prod_name}"
         }
 
         response = requests.post(url, json=payload, headers=headers)
         res_data = response.json()
 
-        if response.status_code == 200 and 'short_url' in res_data:
-            payment_link = res_data['short_url']
-            pl_id = res_data['id']
-            user_orders[user_id]["pl_id"] = pl_id
+        if response.status_code == 200 and 'image_url' in res_data:
+            qr_image_url = res_data['image_url']
+            qr_id = res_data['id']
+            user_orders[user_id]["qr_id"] = qr_id
 
-            msg_text = (
-                "┏ 💳 **RAZORPAY PAYMENT LINK** ❞\n┗ \n\n"
+            caption_text = (
+                "┏ 💳 **UPI PAYMENT QR CODE** ❞\n┗ \n\n"
                 f"Amount: **₹{price:.2f}**\n\n"
-                "Nicher button-e click kore 5 minute er modhe payment complete korun:\n\n"
-                "🟩 Payment korar por **'✅ Verify Payment'** button-e click korun."
+                "⏳ **Time Limit: 5 Minutes**\n"
+                "PhonePe, Google Pay ba je kono UPI app diye u Porte thaka QR code-ti scan kore payment complete korun.\n\n"
+                "🟩 Payment korar por niche **'✅ Verify Payment'** button-e click korun."
             )
             pay_kb = [
-                [InlineKeyboardButton("🌐 Pay Now via Razorpay", url=payment_link)],
-                [InlineKeyboardButton("✅ Verify Payment", callback_data="verify_auto_payment")],
+                [InlineKeyboardButton("✅ Verify Payment", callback_data="verify_qr_payment")],
                 [InlineKeyboardButton("❌ Cancel", callback_data="shop")]
             ]
             await query.answer()
-            await query.edit_message_text(text=msg_text, reply_markup=InlineKeyboardMarkup(pay_kb), parse_mode="Markdown")
+            try:
+                await query.message.delete()
+            except:
+                pass
+            await context.bot.send_photo(chat_id=user_id, photo=qr_image_url, caption=caption_text, reply_markup=InlineKeyboardMarkup(pay_kb), parse_mode="Markdown")
         else:
-            await query.answer("⚠️ Error generating payment link. Check API keys.", show_alert=True)
+            err_msg = res_data.get('error', {}).get('description', 'Unknown error')
+            await query.answer(f"⚠️ Error: {err_msg}", show_alert=True)
 
-    elif data == "verify_auto_payment":
+    elif data == "verify_qr_payment":
         order_info = user_orders.get(user_id, {})
-        pl_id = order_info.get("pl_id")
+        qr_id = order_info.get("qr_id")
         prod_name = order_info.get("product", "RAPID CORE FF ROOT ANDROID")
 
-        if not pl_id:
-            await query.answer("⚠️ No active payment found. Please create an order first.", show_alert=True)
+        if not qr_id:
+            await query.answer("⚠️ No active QR found. Please generate a QR code first.", show_alert=True)
             return
 
-        url = f"https://api.razorpay.com/v1/payment_links/{pl_id}"
+        # Check QR Code status via Razorpay API
+        url = f"https://api.razorpay.com/v1/qr_codes/{qr_id}"
         auth = base64.b64encode(f"{RAZORPAY_KEY_ID}:{RAZORPAY_KEY_SECRET}".encode()).decode()
         headers = {"Authorization": f"Basic {auth}"}
 
@@ -221,8 +224,8 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         res_data = response.json()
 
         if response.status_code == 200:
-            status = res_data.get("status")
-            if status == "paid":
+            payments_count = res_data.get("payments_count", 0)
+            if payments_count > 0:
                 key = DUMMY_KEYS.get(prod_name, "DEFAULT-KEY-12345")
                 success_text = (
                     "✅ **Payment Verified Successfully!** 🎉\n\n"
@@ -231,10 +234,10 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     f"✈️ **Join Secret Group:** [Click Here to Join]({SECRET_GROUP_LINK})"
                 )
                 await query.answer("Payment Verified!", show_alert=True)
-                await query.edit_message_text(text=success_text, parse_mode="Markdown")
+                await query.edit_message_caption(caption=success_text, parse_mode="Markdown")
                 return
 
-        await query.answer("⚠️ Payment not received yet! Please complete payment first.", show_alert=True)
+        await query.answer("⚠️ Payment not received yet! Please complete payment by scanning the QR.", show_alert=True)
 
     elif data == "back_to_main":
         await start(update, context)
