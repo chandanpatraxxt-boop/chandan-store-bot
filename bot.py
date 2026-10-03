@@ -5,10 +5,9 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, Keyboar
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-TOKEN = "8950227047:AAGKQ7D9Jx4cmWrYAWNPYA0IEHrAdErHOlA"
-
-RAZORPAY_KEY_ID = "rzp_test_TjU8CLPgkcpwhb"
-RAZORPAY_KEY_SECRET = "mGxoE4fJ3nbAE4p5fBXLvwBq"
+TOKEN = "8950227047:AAGKQ7D9Jx4cmWrYAWNPYA0IEHrAdErH0lA"
+RAZORPAY_KEY_ID = "rzp_test_Tju8CLPgkcpwhb"
+RAZORPAY_KEY_SECRET = "mGgetXe4fJ3nbAE4p5fBXLvwBc"
 
 user_balances = {}
 user_orders = {}
