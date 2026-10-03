@@ -8,7 +8,7 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 TOKEN = "8950227047:AAGKQ7D9Jx4cmWrYAWNPYA0IEHrAdErHOlA"
 
 RAZORPAY_KEY_ID = "rzp_test_TjU8CLPgkcpwhb"
-RAZORPAY_KEY_SECRET = "YOUR_TEST_KEY_SECRET"
+RAZORPAY_KEY_SECRET = "mGxoE4fJ3nbAE4p5fBXLvwBq"
 
 user_balances = {}
 user_orders = {}
