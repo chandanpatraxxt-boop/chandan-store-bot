@@ -1,21 +1,44 @@
 import logging
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+import base64
+import requests
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, KeyboardButton, ReplyKeyboardMarkup, ReplyKeyboardRemove
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 TOKEN = "8950227047:AAGcs_cSrkHG52lIqWZN-OgXUUQ_n8nJlnQ"
 
+RAZORPAY_KEY_ID = "rzp_test_TjU8CLPgkcpwhb"
+RAZORPAY_KEY_SECRET = "YOUR_TEST_KEY_SECRET"
+
 user_balances = {}
 user_orders = {}
-waiting_for_utr = set()
-
-# Tomar asol UPI ID diye QR Code link set kora holo
-YOUR_UPI_ID = "cn736000@oksbi"
-YOUR_STORE_NAME = "ChandanStore"
-QR_IMAGE_URL = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa={YOUR_UPI_ID}&pn={YOUR_STORE_NAME}"
+verified_users = set()
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
+    
+    # Prothombar user ashle ba verified na thakle phone number share korar button dibo
+    if user_id not in verified_users:
+        verify_text = (
+            "┏ 🔒 **VERIFICATION REQUIRED** ❞\n"
+            "┗ \n\n"
+            "To start shopping, please verify your phone number.\n\n"
+            "🟩 **Why we need this:**\n"
+            "• Secure your purchases\n"
+            "• Deliver keys to you\n"
+            "• Protect your account\n\n"
+            "👇 Click the button below to share your phone number:"
+        )
+        contact_keyboard = [[KeyboardButton("📱 Share Phone Number", request_contact=True)]]
+        reply_markup = ReplyKeyboardMarkup(contact_keyboard, resize_keyboard=True, one_time_keyboard=True)
+        
+        if update.callback_query:
+            await update.callback_query.message.reply_text(text=verify_text, reply_markup=reply_markup, parse_mode="Markdown")
+        else:
+            await update.message.reply_text(text=verify_text, reply_markup=reply_markup, parse_mode="Markdown")
+        return
+
+    # User verified hole tar balance set hobe (Prothombar 0.00 thakbe)
     if user_id not in user_balances:
         user_balances[user_id] = 0.0
     balance = user_balances[user_id]
@@ -40,6 +63,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🍎 Language", callback_data="language")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
+    
     if update.callback_query:
         query = update.callback_query
         await query.answer()
@@ -50,6 +74,17 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await context.bot.send_message(chat_id=user_id, text=welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
     else:
         await update.message.reply_text(text=welcome_text, reply_markup=reply_markup, parse_mode="Markdown")
+
+async def contact_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    user_id = update.effective_user.id
+    contact = update.message.contact
+    
+    if contact:
+        verified_users.add(user_id)
+        if user_id not in user_balances:
+            user_balances[user_id] = 0.0
+        await update.message.reply_text("✅ Phone number verified successfully!", reply_markup=ReplyKeyboardRemove())
+        await start(update, context)
 
 async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
@@ -106,14 +141,17 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     elif data.startswith("prod_"):
         prod_name = data.replace("prod_", "").replace("_", " ").upper()
-        user_orders[user_id] = {"product": prod_name}
+        if user_id not in user_orders:
+            user_orders[user_id] = {}
+        user_orders[user_id]["product"] = prod_name
+        
         plan_text = f"┏ 🛒 **{prod_name}** ❞\n┗ \n\n👑 Choose a plan:\n\n• 1 Day - 💰 ₹40.00\n• 7 Days - 💰 ₹160.00\n• 14 Days - 💰 ₹240.00\n• 30 Days - 💰 ₹360.00"
         plan_keyboard = [
             [InlineKeyboardButton("🛒 1 Day - ₹40.00", callback_data="plan_1")],
             [InlineKeyboardButton("🛒 7 Days - ₹160.00", callback_data="plan_7")],
             [InlineKeyboardButton("🛒 14 Days - ₹240.00", callback_data="plan_14")],
             [InlineKeyboardButton("🛒 30 Days - ₹360.00", callback_data="plan_30")],
-            [InlineKeyboardButton("⬅️ Back", callback_data="cat_root")]
+            [InlineKeyboardButton("⬅️️ Back", callback_data="cat_root")]
         ]
         await query.answer()
         await query.edit_message_text(text=plan_text, reply_markup=InlineKeyboardMarkup(plan_keyboard), parse_mode="Markdown")
@@ -128,7 +166,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         user_orders[user_id]["plan"] = plan_name
         user_orders[user_id]["price"] = price
 
-        prod = user_orders[user_id]["product"]
+        prod = user_orders[user_id].get("product", "PRODUCT")
         summary_text = (
             "┏ 🛒 **ORDER SUMMARY** ❞\n┗ \n\n"
             f"🔑 **Product:** {prod}\n"
@@ -138,46 +176,106 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         summary_kb = [
             [InlineKeyboardButton("✅ Confirm & Pay", callback_data="confirm_pay")],
-            [InlineKeyboardButton("⬅️ Back to Plans", callback_data="prod_rapidcore")]
+            [InlineKeyboardButton("⬅️ Back to Plans", callback_data="shop")]
         ]
         await query.answer()
         await query.edit_message_text(text=summary_text, reply_markup=InlineKeyboardMarkup(summary_kb), parse_mode="Markdown")
 
     elif data == "confirm_pay":
-        order = user_orders.get(user_id, {"price": 40.0})
-        price = order.get("price", 40.0)
+        order = user_orders.get(user_id, {"price": 40.0, "product": "Store Item"})
+        amount_in_paise = int(order.get("price", 40.0) * 100)
         
-        qr_caption = (
-            "┏ 💳 **UPI PAYMENT QR** ❞\n┗ \n\n"
-            f"Scan & pay exactly **₹{price:.2f}** via UPI.\n\n"
-            "🟩 Pay karne ke baad 'VERIFY PAYMENT' button dabayein.\n"
-            "🟩 This QR expires in 5 minutes."
-        )
-        pay_kb = [
-            [InlineKeyboardButton("✅ VERIFY PAYMENT", callback_data="verify_payment")],
-            [InlineKeyboardButton("❌ Cancel Payment", callback_data="shop")]
-        ]
-        await query.answer()
+        url = "https://api.razorpay.com/v1/qr_codes"
+        payload = {
+            "type": "upi_qr",
+            "name": f"Order-{user_id}",
+            "usage": "single_use",
+            "fixed_amount": True,
+            "payment_amount": amount_in_paise,
+            "description": f"Payment for {order.get('product')}"
+        }
+        
+        auth = base64.b64encode(f"{RAZORPAY_KEY_ID}:{RAZORPAY_KEY_SECRET}".encode()).decode()
+        headers = {
+            "Authorization": f"Basic {auth}",
+            "Content-Type": "application/json"
+        }
+        
+        await query.answer("Generating Dynamic UPI QR Code...")
         try:
-            await query.message.delete()
-        except:
-            pass
-        await context.bot.send_photo(chat_id=user_id, photo=QR_IMAGE_URL, caption=qr_caption, reply_markup=InlineKeyboardMarkup(pay_kb), parse_mode="Markdown")
+            response = requests.post(url, json=payload, headers=headers)
+            res_data = response.json()
+            
+            if response.status_code == 200 and "image_url" in res_data:
+                qr_image_url = res_data["image_url"]
+                qr_id = res_data["id"]
+                user_orders[user_id]["qr_id"] = qr_id
+                
+                qr_caption = (
+                    "┏ 💳 **RAZORPAY UPI QR CODE** ❞\n┗ \n\n"
+                    f"Scan & pay exactly **₹{order.get('price'):.2f}** via UPI.\n\n"
+                    "🟩 Payment complete korar por niche **'CHECK PAYMENT STATUS'** dabayein.\n"
+                    "🟩 This QR expires in 5 minutes."
+                )
+                pay_kb = [
+                    [InlineKeyboardButton("🔄 CHECK PAYMENT STATUS", callback_data="check_payment")],
+                    [InlineKeyboardButton("❌ Cancel Payment", callback_data="shop")]
+                ]
+                try:
+                    await query.message.delete()
+                except:
+                    pass
+                await context.bot.send_photo(chat_id=user_id, photo=qr_image_url, caption=qr_caption, reply_markup=InlineKeyboardMarkup(pay_kb), parse_mode="Markdown")
+            else:
+                await query.edit_message_text(text="⚠️ Error generating QR code from Razorpay. Please try again later.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="shop")]]))
+        except Exception as e:
+            logging.error(f"QR Gen Error: {e}")
+            await query.edit_message_text(text="⚠️ Gateway connection error. Try again later.", reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back", callback_data="shop")]]))
 
-    elif data == "verify_payment":
-        waiting_for_utr.add(user_id)
-        ver_text = (
-            "┏ 🟢 **Verification Active** ❞\n┗ \n\n"
-            "Kripya apne payment ka **12-digit UTR Number / UPI Ref No.** yahan send karein.\n\n"
-            "Send /cancel to stop."
-        )
-        await query.answer()
-        await query.message.reply_text(text=ver_text, parse_mode="Markdown")
+    elif data == "check_payment":
+        order = user_orders.get(user_id, {})
+        qr_id = order.get("qr_id")
+        
+        if not qr_id:
+            await query.answer("No active payment session found. Please start over.", show_alert=True)
+            return
+
+        auth = base64.b64encode(f"{RAZORPAY_KEY_ID}:{RAZORPAY_KEY_SECRET}".encode()).decode()
+        headers = {"Authorization": f"Basic {auth}"}
+        
+        await query.answer("Verifying payment with Razorpay...")
+        try:
+            res = requests.get(f"https://api.razorpay.com/v1/qr_codes/{qr_id}/payments", headers=headers)
+            payments_data = res.json()
+            
+            items = payments_data.get("items", [])
+            if items and len(items) > 0:
+                prod = order.get("product", "Digital Item")
+                plan = order.get("plan", "1 Day")
+                
+                success_text = (
+                    "┏ ✅ **PAYMENT SUCCESSFUL!** ❞\n┗ \n\n"
+                    f"🔑 **Product:** {prod}\n"
+                    f"⚙️ **Plan:** {plan}\n\n"
+                    "🎉 **Your License Key:** `CHANDAN-TEST-KEY-XYZ123`\n\n"
+                    "Thank you for your purchase!"
+                )
+                back_kb = [[InlineKeyboardButton("⬅️ Main Menu", callback_data="back_to_main")]]
+                try:
+                    await query.message.delete()
+                except:
+                    pass
+                await context.bot.send_message(chat_id=user_id, text=success_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
+            else:
+                await query.answer("⚠️ Payment not received yet! Please complete the payment by scanning the QR code first.", show_alert=True)
+        except Exception as e:
+            logging.error(f"Payment check error: {e}")
+            await query.answer("⚠️ Error verifying payment. Try again in a few seconds.", show_alert=True)
 
     elif data == "update":
         await query.answer("Checking for updates... Bot is up to date!", show_alert=True)
     elif data == "add_balance":
-        bal_text = "💳 **Add Balance:**\n\nContact admin to add balance to your account.\nAdmin UPI: `cn736000@oksbi`"
+        bal_text = "💳 **Add Balance:**\n\nContact admin to add balance to your account."
         back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
         await query.answer()
         await query.edit_message_text(text=bal_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
@@ -195,7 +293,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await query.edit_message_text(text=ref_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
     elif data == "how_to_use":
-        tutorial_text = "❓ **How To Use:**\n\n1. Select Shop / Store Product.\n2. Choose your device & game type.\n3. Complete payment & get your key instantly."
+        tutorial_text = "❓ **How To Use:**\n\n1. Select Shop / Store Product.\n2. Choose your device & game type.\n3. Scan QR & check payment to get your key instantly."
         back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
         await query.answer()
         await query.edit_message_text(text=tutorial_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
@@ -205,7 +303,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await query.edit_message_text(text=reseller_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
     elif data == "support":
-        support_text = "🛠 **Support:**\n\nFor any help, contact admin UPI: `cn736000@oksbi`"
+        support_text = "🛠 **Support:**\n\nFor any help, contact admin."
         back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
         await query.answer()
         await query.edit_message_text(text=support_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
@@ -224,31 +322,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await query.answer("This option is under setup.", show_alert=True)
 
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    user_id = update.effective_user.id
-    text = update.message.text
-
-    if text == "/cancel":
-        if user_id in waiting_for_utr:
-            waiting_for_utr.remove(user_id)
-        await update.message.reply_text("Process cancelled.")
-        return
-
-    if user_id in waiting_for_utr:
-        waiting_for_utr.remove(user_id)
-        success_text = (
-            "✅ **Payment Submitted Successfully!**\n\n"
-            f"UTR / Ref No: `{text}`\n"
-            "Your payment is under verification. Key will be delivered shortly."
-        )
-        await update.message.reply_text(success_text, parse_mode="Markdown")
-
 def main():
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CommandHandler("cancel", start))
+    app.add_handler(MessageHandler(filters.CONTACT, contact_handler))
     app.add_handler(CallbackQueryHandler(button_handler))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
     print("Bot is running...")
     app.run_polling()
 
