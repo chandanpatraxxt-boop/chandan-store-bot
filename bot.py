@@ -88,7 +88,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         nr_text = "┏ 🛒 **PRODUCT STORE – NONROOT** ❞\n┗ \n\n👑 Choose a product:"
         nr_keyboard = [
             [InlineKeyboardButton("🔑 NONROOT PANEL VIP", callback_data="prod_nr_vip")],
-            [InlineKeyboardButton("⬅️️ Back", callback_data="shop")]
+            [InlineKeyboardButton("⬅️ Back", callback_data="shop")]
         ]
         await query.answer()
         await query.edit_message_text(text=nr_text, reply_markup=InlineKeyboardMarkup(nr_keyboard), parse_mode="Markdown")
@@ -136,7 +136,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         summary_kb = [
             [InlineKeyboardButton("✅ Confirm & Pay via GPay", callback_data="confirm_pay")],
-            [InlineKeyboardButton("⬅️️ Back to Shop", callback_data="shop")]
+            [InlineKeyboardButton("⬅️ Back to Shop", callback_data="shop")]
         ]
         await query.answer()
         await query.edit_message_text(text=summary_text, reply_markup=InlineKeyboardMarkup(summary_kb), parse_mode="Markdown")
@@ -184,7 +184,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data == "profile":
         balance = user_balances.get(user_id, 0.0)
         profile_text = f"👤 **My Profile:**\n\n🆔 User ID: `{user_id}`\n💰 Balance: ₹{balance:.2f}\n📜 Key History: No purchased keys yet."
-        back_kb = [[InlineKeyboardButton("⬅️️ Back", callback_data="back_to_main")]]
+        back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
         await query.answer()
         await query.edit_message_text(text=profile_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
     elif data == "referral":
@@ -213,7 +213,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         lucky_text = "🎁 **Lucky / Daily Gift:**\n\nCome back every 24 hours to spin and win random balance!"
         back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
         await query.answer()
-        await query.edit_message_text(text=lucky_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
+        await query.edit_message_text(text=support_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown") # Adjusted fallback or back kb
     elif data == "language":
         lang_text = "🍎 **Language Settings:**\n\nCurrent Language: English (Default)"
         back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
