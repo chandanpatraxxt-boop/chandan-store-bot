@@ -8,10 +8,9 @@ TOKEN = "8950227047:AAGTU7r4nKR_ChBNq3Y9sY763V_siSHFkmI"
 user_balances = {}
 user_orders = {}
 
-# Google Pay Business Verified UPI ID and QR Code Setup
+# Google Pay Business Verified UPI ID
 YOUR_UPI_ID = "7602428660@okbizaxis"
 YOUR_STORE_NAME = "ChandanStore"
-QR_IMAGE_URL = f"https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=upi://pay?pa={YOUR_UPI_ID}&pn={YOUR_STORE_NAME}"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_id = update.effective_user.id
@@ -137,7 +136,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         summary_kb = [
             [InlineKeyboardButton("✅ Confirm & Pay via GPay", callback_data="confirm_pay")],
-            [InlineKeyboardButton("⬅️ Back to Shop", callback_data="shop")]
+            [InlineKeyboardButton("⬅️️ Back to Shop", callback_data="shop")]
         ]
         await query.answer()
         await query.edit_message_text(text=summary_text, reply_markup=InlineKeyboardMarkup(summary_kb), parse_mode="Markdown")
@@ -149,12 +148,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         upi_link = f"upi://pay?pa={YOUR_UPI_ID}&pn={YOUR_STORE_NAME}&am={price:.2f}&cu=INR"
         
-        qr_caption = (
+        pay_text = (
             "┏ 💳 **GOOGLE PAY AUTO-VERIFY PAYMENT** ❞\n┗ \n\n"
             f"📦 **Item:** {prod_name}\n"
             f"💰 **Amount:** ₹{price:.2f}\n"
             f"📌 **Merchant UPI:** `{YOUR_UPI_ID}`\n\n"
-            "👇 Scan this QR code or click the payment button below to pay. Once payment is successful, click auto-verify to get your key & group link!"
+            "👇 Click the button below to pay via GPay or any UPI app. After payment, click auto-verify to get your key!"
         )
         pay_kb = [
             [InlineKeyboardButton("⚡ Pay Now (Open UPI App)", url=upi_link)],
@@ -162,11 +161,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             [InlineKeyboardButton("❌ Cancel", callback_data="shop")]
         ]
         await query.answer()
-        try:
-            await query.message.delete()
-        except:
-            pass
-        await context.bot.send_photo(chat_id=user_id, photo=QR_IMAGE_URL, caption=qr_caption, reply_markup=InlineKeyboardMarkup(pay_kb), parse_mode="Markdown")
+        await query.edit_message_text(text=pay_text, reply_markup=InlineKeyboardMarkup(pay_kb), parse_mode="Markdown")
 
     elif data == "auto_verify_check":
         await query.answer("Checking Google Pay merchant feed...", show_alert=True)
@@ -177,12 +172,12 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
             "✈️ **Private Group Join Link:** https://t.me/+AbCdEfGhIjKlMnOp\n\n"
             "Thank you for testing Chandan Store!"
         )
-        await context.bot.send_message(chat_id=user_id, text=success_delivery, parse_mode="Markdown")
+        await query.edit_message_text(text=success_delivery, reply_markup=InlineKeyboardMarkup([[InlineKeyboardButton("⬅️ Back to Main", callback_data="back_to_main")]]), parse_mode="Markdown")
 
     elif data == "update":
         await query.answer("Checking for updates... Bot is up to date!", show_alert=True)
     elif data == "add_balance":
-        bal_text = f"💳 **Add Balance:**\n\nScan QR or pay directly to UPI: `{YOUR_UPI_ID}`"
+        bal_text = f"💳 **Add Balance:**\n\nPay directly to UPI: `{YOUR_UPI_ID}`"
         back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
         await query.answer()
         await query.edit_message_text(text=bal_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
@@ -200,7 +195,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.answer()
         await query.edit_message_text(text=ref_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
     elif data == "how_to_use":
-        tutorial_text = "❓ **How To Use:**\n\n1. Select Shop / Store Product.\n2. Choose plan & click Pay Now.\n3. Complete payment via Google Pay and get your key instantly."
+        tutorial_text = "❓ **How To Use:**\n\n1. Select Shop / Store Product.\n2. Choose plan & click Pay Now.\n3. Complete payment via GPay and get your key instantly."
         back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
         await query.answer()
         await query.edit_message_text(text=tutorial_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
@@ -211,7 +206,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=reseller_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
     elif data == "support":
         support_text = f"🛠 **Support:**\n\nFor any help, contact admin UPI: `{YOUR_UPI_ID}`"
-        back_kb = [[InlineKeyboardButton("⬅️️ Back", callback_data="back_to_main")]]
+        back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
         await query.answer()
         await query.edit_message_text(text=support_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
     elif data == "lucky":
@@ -240,7 +235,7 @@ def main():
     app.add_handler(CommandHandler("cancel", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("Bot is running with correct token and Testing Mode (₹1)...")
+    print("Bot is running perfectly...")
     app.run_polling()
 
 if __name__ == "__main__":
