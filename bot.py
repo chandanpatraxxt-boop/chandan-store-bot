@@ -3,7 +3,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
 from telegram.ext import ApplicationBuilder, ContextTypes, CommandHandler, CallbackQueryHandler, MessageHandler, filters
 
 logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
-TOKEN = "8950227047:AAGclEDHAE2y3MZoI0kuViOvsVksQ_hoptg"
+TOKEN = "8950227047:AAEqwAAe-U8QcO2jjeikKA_2qVW8uKsBz4M"
 
 user_balances = {}
 user_orders = {}
@@ -106,7 +106,6 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     elif data.startswith("prod_"):
         prod_name = data.replace("prod_", "").replace("_", " ").upper()
         user_orders[user_id] = {"product": prod_name}
-        # Testing phase: sabai plan er price ₹1.00 kore dewa holo
         plan_text = f"┏ 🛒 **{prod_name}** ❞\n┗ \n\n👑 Choose a plan (TESTING MODE - ₹1):\n\n• 1 Day - 💰 ₹1.00\n• 7 Days - 💰 ₹1.00\n• 14 Days - 💰 ₹1.00\n• 30 Days - 💰 ₹1.00"
         plan_keyboard = [
             [InlineKeyboardButton("🛒 1 Day - ₹1.00", callback_data="plan_1")],
@@ -222,7 +221,7 @@ async def button_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await query.edit_message_text(text=lucky_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
     elif data == "language":
         lang_text = "🍎 **Language Settings:**\n\nCurrent Language: English (Default)"
-        back_kb = [[InlineKeyboardButton("⬅️ Back", callback_data="back_to_main")]]
+        back_kb = [[InlineKeyboardButton("⬅️️ Back", callback_data="back_to_main")]]
         await query.answer()
         await query.edit_message_text(text=lang_text, reply_markup=InlineKeyboardMarkup(back_kb), parse_mode="Markdown")
     elif data == "back_to_main":
@@ -241,7 +240,7 @@ def main():
     app.add_handler(CommandHandler("cancel", start))
     app.add_handler(CallbackQueryHandler(button_handler))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-    print("Bot is running with Testing Mode (₹1)...")
+    print("Bot is running with Testing Mode (₹1) and new token...")
     app.run_polling()
 
 if __name__ == "__main__":
